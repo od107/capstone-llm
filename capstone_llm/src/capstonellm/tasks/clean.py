@@ -21,9 +21,8 @@ def flatten_schema(schema, prefix=""):
 
 def clean(spark: SparkSession, environment: str, tag: str):
     spark = SparkSession.builder.getOrCreate()
-    #starting with the dbt set
-    qdf = spark.read.json("s3a://dataminded-academy-capstone-llm-data-us/input/pyspark/questions.json")
-    adf = spark.read.json("s3a://dataminded-academy-capstone-llm-data-us/input/pyspark/answers.json")
+    qdf = spark.read.json("s3a://dataminded-academy-capstone-llm-data-us/input/" + tag + "/questions.json")
+    adf = spark.read.json("s3a://dataminded-academy-capstone-llm-data-us/input/" + tag + "/answers.json")
     adf_expl = adf.select("items", psf.explode(adf.items).alias("item")).select('item')
     qdf_expl = qdf.select("items", psf.explode(qdf.items).alias("item")).select('item')
 
@@ -44,7 +43,12 @@ def clean(spark: SparkSession, environment: str, tag: str):
     combined = combined.drop('accepted_answer_id')
     combined = combined.drop('answer_id')
 
-    combined.repartition(combined.count()).write.json('s3a://dataminded-academy-capstone-llm-data-us/jochen/pyspark/output')
+    #very_slow to write these small files to S3
+    output_s3 = 's3a://dataminded-academy-capstone-llm-data-us/jochen/" + tag + "/output'
+    output_local= 'output'
+
+
+    combined.repartition(combined.count()).write.mode('ignore').json(output_s3)
 
 
 def main():
