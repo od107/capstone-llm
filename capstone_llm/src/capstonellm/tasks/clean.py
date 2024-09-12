@@ -1,13 +1,51 @@
 import argparse
 import logging
 from pyspark.sql import SparkSession
+import pyspark.sql.functions as psf
+from pyspark.sql.types import StructType
 
 from capstonellm.common.spark import ClosableSparkSession
 
 logger = logging.getLogger(__name__)
 
+# Recursive function to flatten schema
+def flatten_schema(schema, prefix=""):
+    fields = []
+    for field in schema.fields:
+        name = prefix + field.name
+        if isinstance(field.dataType, StructType):
+            fields += flatten_schema(field.dataType, name + ".")
+        else:
+            fields.append(name)
+    return fields
+
 def clean(spark: SparkSession, environment: str, tag: str):
-    pass
+    spark = SparkSession.builder.getOrCreate()
+    #starting with the dbt set
+    qdf = spark.read.json("s3a://dataminded-academy-capstone-llm-data-us/input/pyspark/questions.json")
+    adf = spark.read.json("s3a://dataminded-academy-capstone-llm-data-us/input/pyspark/answers.json")
+    adf_expl = adf.select("items", psf.explode(adf.items).alias("item")).select('item')
+    qdf_expl = qdf.select("items", psf.explode(qdf.items).alias("item")).select('item')
+
+    columns = flatten_schema(qdf_expl.schema)
+    qdf_flat = qdf_expl.select(*columns)
+    columns = flatten_schema(adf_expl.schema)
+    adf_flat = adf_expl.select(*columns)
+
+    questions = qdf_flat.select(
+    'question_id',
+    'title',
+    'body',
+    'accepted_answer_id'
+    ).withColumnRenamed('body','question_body')
+    answers = adf_flat.select('answer_id', 'body').withColumnRenamed('body','answer_body')
+    
+    combined = questions.join(answers, questions.accepted_answer_id == answers.answer_id, 'left')
+    combined = combined.drop('accepted_answer_id')
+    combined = combined.drop('answer_id')
+
+    combined.repartition(combined.count()).write.json('s3a://dataminded-academy-capstone-llm-data-us/jochen/pyspark/output')
+
 
 def main():
     parser = argparse.ArgumentParser(description="capstone_llm")
