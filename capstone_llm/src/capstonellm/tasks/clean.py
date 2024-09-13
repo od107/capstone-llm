@@ -34,7 +34,7 @@ def clean(spark: SparkSession, environment: str, tag: str):
     #very_slow to write these small files to S3
     output_local= 'output'
 
-    combined.repartition(combined.count()).write.mode('ignore').json(f"s3a://{llm_bucket}/cleaned/{tag}/")
+    combined.repartition(combined.count()).write.mode('overwrite').json(f"s3a://{llm_bucket}/cleaned/{tag}/")
 
 
 def main():

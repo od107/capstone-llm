@@ -4,8 +4,11 @@ USER 0
 ENV PYSPARK_PYTHON python3
 WORKDIR /opt/spark/work-dir
 
+RUN python3 -m pip install --upgrade pip
+
 COPY requirements.txt requirements.txt
-RUN pip3 install -r requirements.txt --no-cache-dir
+RUN pip install -r requirements.txt --no-cache-dir
 
 COPY . .
-RUN pip3 install .
+RUN pip install .
+
