@@ -9,7 +9,6 @@ from capstonellm.common.spark import ClosableSparkSession
 logger = logging.getLogger(__name__)
 
 def clean(spark: SparkSession, environment: str, tag: str):
-    spark = SparkSession.builder.getOrCreate()
     qdf = spark.read.json(f"s3a://{llm_bucket}/input/{tag}/questions.json")
     adf = spark.read.json(f"s3a://{llm_bucket}/input/{tag}/answers.json")
     adf_expl = adf.select("items", psf.explode(adf.items).alias("item")).select('item')
@@ -34,7 +33,7 @@ def clean(spark: SparkSession, environment: str, tag: str):
     #very_slow to write these small files to S3
     output_local= 'output'
 
-    combined.repartition(combined.count()).write.mode('overwrite').json(f"s3a://{llm_bucket}/cleaned/{tag}/")
+    combined.repartition(combined.count()).write.mode('overwrite').json(f"s3a://{llm_bucket}/cleaned/jochen/{tag}/")
 
 
 def main():
@@ -44,7 +43,7 @@ def main():
     )
     parser.add_argument(
         "-t", "--tag", dest="tag", help="the tag to process",
-        default="python-polars", required=False
+        default="docker", required=False
     )
     logger.info("starting the cleaning job")
 
